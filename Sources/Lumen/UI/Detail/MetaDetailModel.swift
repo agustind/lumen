@@ -22,6 +22,10 @@ final class MetaDetailModel {
     var selectedVideoId: String?
     var streamGroups: [AddonStreams] = []
     var addonFilter: String?
+    var recommendations: [MetaItem] = []
+    /// Shown next to the row title ("Popular in <genre>" for the genre fallback, none for TMDB).
+    var recommendationsSource: String?
+    var isLoadingRecommendations = false
     /// Addon whose streams are pre-selected (e.g. Torrentio RD) until the user picks a filter.
     private var preferredAddonId: String?
     private var userPickedFilter = false
@@ -65,6 +69,15 @@ final class MetaDetailModel {
                 selectVideo(only.id, profile: profile)
             }
         }
+        await loadRecommendations(for: meta, addons: profile.activeAddons)
+    }
+
+    private func loadRecommendations(for meta: MetaItem, addons: [AddonDescriptor]) async {
+        isLoadingRecommendations = true
+        let result = await Recommendations.load(for: meta, addons: addons)
+        recommendations = result?.items ?? []
+        recommendationsSource = result?.source
+        isLoadingRecommendations = false
     }
 
     var isSeries: Bool { !(meta?.videos.isEmpty ?? true) }

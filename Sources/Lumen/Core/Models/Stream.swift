@@ -151,6 +151,28 @@ struct Stream: Codable, Hashable, Identifiable, Sendable {
 
     var displayDescription: String { description ?? behaviorHints.filename ?? "" }
 
+    /// The description split around its stats line (Torrentio-style "👤 seeders 💾 size ⚙️ source"),
+    /// so lists can keep the stats visible however long the release name is.
+    struct DescriptionParts: Equatable {
+        /// Release name and file name lines, before the stats line (the whole description if there is none).
+        var title: String
+        var stats: String?
+        /// Lines after the stats line, usually languages ("🇬🇧 / 🇮🇹").
+        var extra: String?
+    }
+
+    private static let statsMarkers = ["👤", "💾", "⚙️", "🌱", "📦"]
+
+    var descriptionParts: DescriptionParts {
+        let lines = displayDescription.split(whereSeparator: \.isNewline).map(String.init)
+        guard let index = lines.firstIndex(where: { line in Self.statsMarkers.contains { line.contains($0) } }) else {
+            return DescriptionParts(title: displayDescription)
+        }
+        let after = lines[(index + 1)...].joined(separator: " ")
+        return DescriptionParts(title: lines[..<index].joined(separator: "\n"), stats: lines[index],
+                                extra: after.isEmpty ? nil : after)
+    }
+
     /// Magnet link for torrent streams.
     var magnetURL: URL? {
         guard case let .torrent(hash, _, announce, _) = source else { return nil }

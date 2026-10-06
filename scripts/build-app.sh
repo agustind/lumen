@@ -8,6 +8,8 @@
 # For --standalone, libmpv comes from an installed Stremio.app (preferred, it ships a
 # self-contained libmpv) or from Homebrew (`brew install mpv dylibbundler`).
 #
+# Set TMDB_TOKEN (or put it in .tmdb-token) to enable TMDB recommendations on detail pages.
+#
 # Signs ad-hoc by default. Set SIGN_IDENTITY to a "Developer ID Application: …" identity to sign
 # for distribution (hardened runtime + secure timestamp, as notarization requires).
 set -euo pipefail
@@ -55,6 +57,14 @@ fi
 cp "$ROOT/Resources/AppIcon.icns" "$CONTENTS/Resources/AppIcon.icns"
 
 sed -e "s/__VERSION__/$VERSION/g" "$ROOT/Resources/Info.plist" > "$CONTENTS/Info.plist"
+
+# TMDB credential for recommendations: $TMDB_TOKEN, or the git-ignored file .tmdb-token.
+# Without one, detail pages recommend popular titles in the same genre instead.
+TMDB_TOKEN="${TMDB_TOKEN:-$(cat "$ROOT/.tmdb-token" 2>/dev/null || true)}"
+if [[ -n "$TMDB_TOKEN" ]]; then
+    echo "==> TMDB recommendations enabled"
+    /usr/libexec/PlistBuddy -c "Add :LumenTMDBToken string $TMDB_TOKEN" "$CONTENTS/Info.plist"
+fi
 printf 'APPL????' > "$CONTENTS/PkgInfo"
 
 if [[ "$STANDALONE" == 1 ]]; then

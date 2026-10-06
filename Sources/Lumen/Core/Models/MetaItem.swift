@@ -40,6 +40,8 @@ struct MetaItem: Codable, Hashable, Identifiable, Sendable {
     var trailerStreams: [Stream] = []
     var videos: [Video] = []
     var behaviorHints: BehaviorHints = BehaviorHints()
+    /// TMDB id (Cinemeta's `moviedb_id`), used for recommendations.
+    var moviedbId: Int?
 
     struct BehaviorHints: Codable, Hashable, Sendable {
         var defaultVideoId: String?
@@ -64,6 +66,7 @@ struct MetaItem: Codable, Hashable, Identifiable, Sendable {
         case id, type, name, poster, posterShape, background, logo, description, releaseInfo, runtime
         case released, imdbRating, genres, genre, cast, director, writer, links, trailerStreams, trailers
         case videos, behaviorHints, year
+        case moviedbId = "moviedb_id"
     }
 
     init(id: String, type: String, name: String, poster: URL? = nil, posterShape: PosterShape = .poster) {
@@ -101,6 +104,7 @@ struct MetaItem: Codable, Hashable, Identifiable, Sendable {
         }
         videos = c.lossyArray(Video.self, .videos)
         behaviorHints = c.lossy(BehaviorHints.self, .behaviorHints) ?? BehaviorHints()
+        moviedbId = c.lossyInt(.moviedbId)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -121,6 +125,7 @@ struct MetaItem: Codable, Hashable, Identifiable, Sendable {
         try c.encode(links, forKey: .links)
         try c.encode(videos, forKey: .videos)
         try c.encode(behaviorHints, forKey: .behaviorHints)
+        try c.encodeIfPresent(moviedbId, forKey: .moviedbId)
     }
 
     // MARK: Derived

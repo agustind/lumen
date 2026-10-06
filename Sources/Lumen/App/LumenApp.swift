@@ -39,6 +39,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var app: AppState?
     var pendingURLs: [URL] = []
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        // Thin overlay scroll bars that take no space and fade out when idle, even with a mouse attached
+        // or "Show scroll bars: Always". This app-level setting overrides the system one for Lumen only.
+        UserDefaults.standard.set("WhenScrolling", forKey: "AppleShowScrollBars")
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         // When run outside an .app bundle (swift run), make sure we become a regular app.
         NSApp.setActivationPolicy(.regular)

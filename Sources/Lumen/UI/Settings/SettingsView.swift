@@ -124,6 +124,13 @@ struct SettingsView: View {
             Section("About") {
                 LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")
                 LabeledContent("mpv library", value: MPVLibrary.loadedPath ?? "–")
+                LabeledContent("Recommendations", value: TMDBClient.isConfigured ? "TMDB" : "Popular titles in the same genre")
+                if TMDBClient.isConfigured {
+                    // Attribution required by TMDB's API terms.
+                    Text("This product uses the TMDB API but is not endorsed or certified by TMDB.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
                 HStack {
                     Button("Show Data Folder") { NSWorkspace.shared.open(Storage.directory) }
                     Button("Clear Caches") {

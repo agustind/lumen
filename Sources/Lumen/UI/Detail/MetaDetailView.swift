@@ -19,6 +19,14 @@ struct MetaDetailView: View {
                             .padding(36)
                             .frame(maxWidth: 760, alignment: .leading)
                             .frame(maxWidth: .infinity, alignment: .leading)
+                        if model.isLoadingRecommendations || !model.recommendations.isEmpty {
+                            // CatalogRow pads its content by 28pt; 8 more lines it up with the info column.
+                            CatalogRow(title: "You might also like", subtitle: model.recommendationsSource,
+                                       items: model.recommendations, isLoading: model.isLoadingRecommendations,
+                                       onSelect: { app.openMeta($0) })
+                                .padding(.leading, 8)
+                                .padding(.bottom, 36)
+                        }
                     } else if model.isLoadingMeta {
                         ProgressView().frame(maxWidth: .infinity, minHeight: 400)
                     } else {
@@ -587,12 +595,27 @@ private struct StreamRow: View {
                     .frame(width: 96, alignment: .leading)
                     .lineLimit(4)
 
-                Text(stream.displayDescription)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Theme.secondaryForeground)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(5)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                // Long release names are truncated; seeders, size and source always stay visible.
+                let parts = stream.descriptionParts
+                VStack(alignment: .leading, spacing: 3) {
+                    if !parts.title.isEmpty {
+                        Text(parts.title)
+                            .lineLimit(parts.stats == nil ? 5 : 3)
+                    }
+                    if let stats = parts.stats {
+                        Text(stats)
+                            .lineLimit(1)
+                            .layoutPriority(1)
+                    }
+                    if let extra = parts.extra {
+                        Text(extra)
+                            .lineLimit(1)
+                    }
+                }
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.secondaryForeground)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
                 Image(systemName: stream.isPlayableInApp ? "play.fill" : "arrow.up.right.square")
                     .font(.system(size: 14))

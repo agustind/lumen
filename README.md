@@ -16,6 +16,8 @@ well natively: **libmpv** for playback and Stremio's **streaming server** (`serv
 - **Library**: filter by type, sort, and filter by text; synced with your Stremio account
 - **Search**: searches every addon catalog that supports it
 - **Detail pages**: logo, rating, genres, cast; seasons and episodes with watched marks; streams grouped by addon
+  (seeders, size and source always visible); "You might also like" recommendations from TMDB, or popular
+  titles in the same genre when no TMDB token is configured
 - **Player**: mpv rendered via the OpenGL render API (hardware decoding, every container and codec)
   - Embedded and addon subtitles (OpenSubtitles), with auto-selection by language and delay adjustment
   - Audio tracks, playback speed, switching streams without leaving the player
@@ -53,6 +55,7 @@ It runs on Apple Silicon Macs with macOS 15 or later. The app is signed and nota
 ```sh
 scripts/build-app.sh               # → build/Lumen.app (relies on Stremio.app/Homebrew at runtime)
 scripts/build-app.sh --standalone  # also bundles libmpv, node, server.js and ffmpeg into the app
+TMDB_TOKEN=… scripts/build-app.sh  # enables TMDB recommendations (or put the token in .tmdb-token, git-ignored)
 open build/Lumen.app
 
 scripts/make-dmg.sh                # → build/Lumen-<version>.dmg from build/Lumen.app
