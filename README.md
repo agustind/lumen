@@ -118,6 +118,10 @@ casting, and the intro/outro skip API.
 
 ## Licensing
 
+Lumen's own code is released under the [MIT License](LICENSE). The libmpv headers in `Sources/CMpv/include`
+are ISC-licensed by the mpv developers. Release builds bundle third-party binaries (libmpv, FFmpeg and
+their dependencies, Node.js and Stremio's streaming server), which keep their own licenses.
+
 Stremio's code is GPL-licensed and its name and logo are trademarks of Smart Code Ltd. Lumen is not
 affiliated with or endorsed by Smart Code Ltd. This project
 reuses Stremio's protocols, its public API and (at runtime) its streaming server. Check those terms
