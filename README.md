@@ -35,13 +35,7 @@ AVFoundation is used as a fallback when libmpv isn't available. It plays MP4/HLS
 
 Download `Lumen-<version>.dmg` from [Releases](https://github.com/agustind/lumen/releases), open it and drag
 Lumen to Applications. The release build bundles libmpv and the streaming server, so nothing else is needed.
-It runs on Apple Silicon Macs with macOS 15 or later.
-
-The app is not notarized, so macOS blocks it on first launch. Clear the quarantine flag once:
-
-```sh
-xattr -dr com.apple.quarantine /Applications/Lumen.app
-```
+It runs on Apple Silicon Macs with macOS 15 or later. The app is signed and notarized by Apple.
 
 ## Building from source
 
@@ -62,6 +56,10 @@ scripts/build-app.sh --standalone  # also bundles libmpv, node, server.js and ff
 open build/Lumen.app
 
 scripts/make-dmg.sh                # → build/Lumen-<version>.dmg from build/Lumen.app
+
+# Signed + notarized release (Developer ID and a `notarytool store-credentials` profile)
+export SIGN_IDENTITY="Developer ID Application: …"
+scripts/build-app.sh --standalone && NOTARY_PROFILE=<profile> scripts/make-dmg.sh
 
 swift test                         # unit tests (addon protocol, library format, watched bitfield)
 ```

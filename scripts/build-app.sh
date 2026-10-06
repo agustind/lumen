@@ -7,6 +7,9 @@
 #
 # For --standalone, libmpv comes from an installed Stremio.app (preferred, it ships a
 # self-contained libmpv) or from Homebrew (`brew install mpv dylibbundler`).
+#
+# Signs ad-hoc by default. Set SIGN_IDENTITY to a "Developer ID Application: …" identity to sign
+# for distribution (hardened runtime + secure timestamp, as notarization requires).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -82,13 +85,26 @@ if [[ "$STANDALONE" == 1 ]]; then
     fi
 fi
 
-echo "==> Signing (ad-hoc)"
-for dir in "$CONTENTS/Frameworks" "$CONTENTS/Resources/server"; do
-    [[ -d "$dir" ]] || continue
-    find "$dir" -type f \( -name "*.dylib" -o -perm -u+x \) -print0 \
-        | while IFS= read -r -d '' file; do codesign --force --sign - "$file" >/dev/null 2>&1 || true; done
+IDENTITY="${SIGN_IDENTITY:--}"
+if [[ "$IDENTITY" == "-" ]]; then
+    echo "==> Signing (ad-hoc)"
+    SIGN_FLAGS=(--force --sign -)
+else
+    echo "==> Signing ($IDENTITY)"
+    SIGN_FLAGS=(--force --sign "$IDENTITY" --options runtime --timestamp)
+fi
+# Nested code first (libraries, then helper executables), the app bundle last.
+if [[ -d "$CONTENTS/Frameworks" ]]; then
+    find "$CONTENTS/Frameworks" -type f -name "*.dylib" -print0 \
+        | while IFS= read -r -d '' file; do codesign "${SIGN_FLAGS[@]}" "$file" >/dev/null; done
+fi
+for tool in ffmpeg ffprobe; do
+    [[ -f "$CONTENTS/Resources/server/$tool" ]] && codesign "${SIGN_FLAGS[@]}" "$CONTENTS/Resources/server/$tool" >/dev/null
 done
-codesign --force --sign - --entitlements "$ROOT/Resources/Lumen.entitlements" "$APP"
+if [[ -f "$CONTENTS/Resources/server/node" ]]; then
+    codesign "${SIGN_FLAGS[@]}" --entitlements "$ROOT/Resources/node.entitlements" "$CONTENTS/Resources/server/node" >/dev/null
+fi
+codesign "${SIGN_FLAGS[@]}" --entitlements "$ROOT/Resources/Lumen.entitlements" "$APP"
 
 echo "==> Done: $APP"
 du -sh "$APP" | awk '{print "    size: " $1}'
