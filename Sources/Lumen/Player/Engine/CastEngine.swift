@@ -140,7 +140,7 @@ final class CastEngine: PlaybackEngine {
                 self.apply(status)
             } catch {
                 if isLoad {
-                    self.fail("Couldn't play on \(self.device.name): \(error.localizedDescription)")
+                    self.fail(self.describe(error))
                 } else {
                     Log.error("Cast command \(params.keys.sorted()) failed: \(error.localizedDescription)")
                 }
@@ -220,10 +220,30 @@ final class CastEngine: PlaybackEngine {
             stoppedPolls += 1
             if stoppedPolls >= 3 { fail("Playback was stopped on \(device.name).") }
         case .error:
-            fail("\(device.name) couldn't play this stream.")
+            fail(deviceErrorMessage())
         case nil:
             break
         }
+    }
+
+    private func describe(_ error: Error) -> String {
+        let message = error.localizedDescription
+        if message.localizedCaseInsensitiveContains("timeout") || (error as? URLError)?.code == .timedOut {
+            return "\(device.name) didn't respond in time. Check that it's on and connected to the same network."
+        }
+        return "Couldn't play on \(device.name): \(message)"
+    }
+
+    /// The server only reports an error state; the device's reason is in its log.
+    private func deviceErrorMessage() -> String {
+        let marker = "Handle Cast Error "
+        let reason = server.log.suffix(50).last { $0.hasPrefix(marker) }.map { String($0.dropFirst(marker.count)) }
+        if let reason, reason.contains("(704)") {
+            // UPnP "Local restrictions": Samsung TVs answer this until the sender is allowed.
+            return "\(device.name) refused the stream. On Samsung TVs, accept the prompt on the TV or allow this Mac "
+                + "under Settings › General › External Device Manager › Device Connection Manager."
+        }
+        return "\(device.name) couldn't play this stream" + (reason.map { " (\($0))." } ?? ".")
     }
 
     private func fail(_ message: String) {

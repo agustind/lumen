@@ -89,7 +89,7 @@ final class StreamingServer {
         }
         let serverJS: URL
         do {
-            serverJS = try await Self.findOrDownloadServerJS()
+            serverJS = Self.patchedForCasting(try await Self.findOrDownloadServerJS())
         } catch {
             status = .failed("Could not download server.js: \(error.localizedDescription)")
             return
@@ -223,6 +223,41 @@ final class StreamingServer {
         try? FileManager.default.removeItem(at: downloaded)
         try FileManager.default.moveItem(at: temp, to: downloaded)
         return downloaded
+    }
+
+    /// Fixes to server.js's casting, applied to a copy that's launched instead of the original.
+    /// Each patch is skipped if its code isn't found (a different server version).
+    private static let castingPatches: [(original: String, patched: String)] = [
+        // The Chromecast client gives up on any message after 5s, which TVs on a slow or
+        // power-saving Wi-Fi link regularly exceed (connecting and launching the receiver take
+        // several round trips).
+        ("ChromecastClient.MESSAGE_TIMEOUT = 5e3", "ChromecastClient.MESSAGE_TIMEOUT = 3e4"),
+        // Cap cast video at 1080p: HD Chromecasts drop 4K streams, and smaller video transcodes
+        // faster and survives weak Wi-Fi. H.264 above 1080p is re-encoded instead of copied...
+        (#""Video" == stream.type && "h264" == stream.codec;"#,
+         #""Video" == stream.type && "h264" == stream.codec && !(+(/\d+x(\d+)/.exec(stream.vidfmt || "") || [])[1] > 1080);"#),
+        // ...and every re-encode is scaled down (keeping burned-in subtitles for DLNA).
+        (#"subtitles && args.push("-vf", "subtitles=" + subtitles)"#,
+         #"args.push("-vf", "scale=-2:'min(1080,ih)'" + (subtitles ? ",subtitles=" + subtitles : ""))"#),
+    ]
+
+    private static func patchedForCasting(_ serverJS: URL) -> URL {
+        guard var source = try? String(contentsOf: serverJS, encoding: .utf8) else { return serverJS }
+        let original = source
+        for patch in castingPatches where source.contains(patch.original) {
+            source = source.replacingOccurrences(of: patch.original, with: patch.patched)
+        }
+        guard source != original else { return serverJS }
+        let destination = Storage.url("server-lumen.js")
+        if (try? String(contentsOf: destination, encoding: .utf8)) != source {
+            do {
+                try source.write(to: destination, atomically: true, encoding: .utf8)
+            } catch {
+                Log.error("Couldn't write patched server.js: \(error.localizedDescription)")
+                return serverJS
+            }
+        }
+        return destination
     }
 
     // MARK: Server API
@@ -416,8 +451,9 @@ final class StreamingServer {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(params)
-        // Loading a stream probes it with ffmpeg first, which can take a while for torrents.
-        request.timeoutInterval = params["source"] == nil ? 15 : 90
+        // Loading a stream probes it with ffmpeg first, which can take a while for torrents, and
+        // slow TVs can take up to the server's 30s per message to answer.
+        request.timeoutInterval = params["source"] == nil ? 45 : 120
         let (data, response) = try await URLSession.shared.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         let json = (try? JSON.decoder.decode(JSONValue.self, from: data)) ?? .null
