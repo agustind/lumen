@@ -24,6 +24,7 @@ well natively: **libmpv** for playback and Stremio's **streaming server** (`serv
   - Next-episode card, plus binge-watching via the stream's `bingeGroup`
   - Torrent stats (peers, speed) while buffering
   - Now Playing / media keys, sleep prevention, immersive full-screen window chrome
+  - Play on a TV: Chromecast and DLNA TVs on the network, through the streaming server's casting API
 - **Addons**: installed, Official and Community lists, install by URL or `stremio://`/`lumen://` link, configure, uninstall
 - **Account**: log in or sign up; addon collection and library sync through `api.strem.io`
   (same datastore as the official apps, including the watched-episodes bitfield)
@@ -97,7 +98,7 @@ Sources/Lumen/
   Core/Addons/                addon transport (resource URLs, caching)
   Core/Stores/                profile/settings and library stores (persistence + sync)
   Core/Server/                streaming server lifecycle and API (torrents, proxy, opensubHash)
-  Player/                     PlayerSession, engines (mpv, AVFoundation), player UI, Now Playing
+  Player/                     PlayerSession, engines (mpv, AVFoundation, cast), player UI, Now Playing
   UI/                         Board, Discover, Library, Search, Detail, Addons, Settings
 Tests/LumenTests/             model and protocol tests
 scripts/build-app.sh          bundles build/Lumen.app; make-icon.swift renders the icon

@@ -54,6 +54,7 @@ struct PlayerView: View {
                     switch panel {
                     case .subtitles: SubtitlesMenu(session: session)
                     case .audio: AudioMenu(session: session)
+                    case .cast: CastMenu(session: session)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
@@ -67,6 +68,19 @@ struct PlayerView: View {
                 .padding(.top, 90)
                 .allowsHitTesting(false)
 
+            if let message = session.castMessage {
+                Label(message, systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 9)
+                    .background(.black.opacity(0.75), in: Capsule())
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 90)
+                    .allowsHitTesting(false)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+
             if session.showNextEpisodePrompt, let next = session.nextVideo {
                 NextEpisodeCard(video: next, hasStream: session.nextStreamCandidate != nil,
                                 onPlay: playNext, onDismiss: { session.dismissNextEpisodePrompt() })
@@ -79,6 +93,7 @@ struct PlayerView: View {
         .animation(.easeInOut(duration: 0.2), value: controlsVisible)
         .animation(.easeOut(duration: 0.15), value: panel)
         .animation(.easeInOut(duration: 0.25), value: session.showNextEpisodePrompt)
+        .animation(.easeInOut(duration: 0.2), value: session.castMessage)
         .onContinuousHover { phase in
             if case .active = phase { showControls() }
         }
@@ -315,6 +330,7 @@ private struct WindowChrome: NSViewRepresentable {
 enum PlayerPanel: Equatable {
     case subtitles
     case audio
+    case cast
 }
 
 /// In-player menu panel. Drawn inside the player (not an NSPopover) so it keeps a stable
@@ -432,6 +448,13 @@ private struct PlayerControls: View {
                     }
                     .buttonStyle(.plain)
                     .help("Audio & speed")
+
+                    Button { panel = panel == .cast ? nil : .cast } label: {
+                        Image(systemName: session.castDevice != nil ? "tv.fill" : "tv")
+                            .foregroundStyle(panel == .cast || session.castDevice != nil ? Theme.accent : .white)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Play on TV")
 
                     if session.request.meta != nil {
                         Button(action: onStreams) { Image(systemName: "list.bullet.rectangle") }
@@ -753,6 +776,15 @@ private struct AudioMenu: View {
                     session.selectAudio(track)
                 }
             }
+            if session.castDevice == nil {
+                speedControls
+            }
+        }
+        .padding(8)
+    }
+
+    private var speedControls: some View {
+        VStack(alignment: .leading, spacing: 2) {
             Divider().padding(.vertical, 6)
             Text("SPEED").font(.system(size: 10, weight: .bold)).foregroundStyle(.secondary).padding(.horizontal, 8)
             HStack(spacing: 4) {
@@ -771,7 +803,67 @@ private struct AudioMenu: View {
             }
             .padding(8)
         }
+    }
+}
+
+/// Lists TVs found by the streaming server, plus this Mac.
+private struct CastMenu: View {
+    @Environment(AppState.self) private var app
+    var session: PlayerSession
+    @State private var devices: [StreamingServer.CastDevice] = []
+    @State private var isLoading = true
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text("PLAY ON").font(.system(size: 10, weight: .bold)).foregroundStyle(.secondary)
+                Spacer()
+                if isLoading {
+                    ProgressView().controlSize(.mini)
+                } else {
+                    Button { Task { await load() } } label: { Image(systemName: "arrow.clockwise") }
+                        .buttonStyle(.borderless)
+                        .font(.caption)
+                        .help("Refresh")
+                }
+            }
+            .padding(8)
+            MenuRow(title: "This Mac", isSelected: session.castDevice == nil) { session.stopCasting() }
+            ForEach(devices) { device in
+                MenuRow(title: device.name, detail: device.isChromecast ? "Chromecast" : "DLNA",
+                        isSelected: session.castDevice?.id == device.id) {
+                    session.startCasting(to: device)
+                }
+            }
+            if let note = error ?? (!isLoading && devices.isEmpty ? Self.noDevicesNote : nil) {
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(8)
+            }
+        }
         .padding(8)
+        .task { await load() }
+    }
+
+    private static let noDevicesNote = "No TVs found. Chromecast and DLNA TVs on the same network show up here. "
+        + "The streaming server looks for them when it starts, so a TV turned on later needs a server restart (Settings)."
+
+    private func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        guard app.server.status.isRunning else {
+            error = "Casting needs the streaming server, which isn't running."
+            return
+        }
+        do {
+            devices = try await app.server.castDevices()
+            error = nil
+        } catch {
+            self.error = "Couldn't list TVs: \(error.localizedDescription)"
+        }
     }
 }
 

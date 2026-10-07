@@ -386,6 +386,48 @@ final class StreamingServer {
         return (hash, size)
     }
 
+    // MARK: Casting
+
+    /// A Chromecast or DLNA renderer found by the server's discovery (mDNS/SSDP at server start).
+    struct CastDevice: Identifiable, Hashable, Decodable, Sendable {
+        var id: String
+        var name: String
+        var type: String
+
+        var isChromecast: Bool { type == "chromecast" }
+    }
+
+    struct CastError: LocalizedError {
+        var message: String
+        var errorDescription: String? { message }
+    }
+
+    func castDevices() async throws -> [CastDevice] {
+        let (data, _) = try await URLSession.shared.data(from: baseURL.appendingPathComponent("casting/"))
+        // "external" entries are desktop players (VLC) the server would launch locally.
+        return try JSONDecoder().decode([CastDevice].self, from: data).filter { $0.type == "chromecast" || $0.type == "tv" }
+    }
+
+    /// Sends a command to a cast device and returns its media status. An empty `params` just
+    /// reads the status. Times are in milliseconds, volume is 0...1.
+    func castCommand(_ deviceID: String, _ params: [String: JSONValue] = [:]) async throws -> JSONValue {
+        let url = baseURL.appendingPathComponent("casting").appendingPathComponent(deviceID).appendingPathComponent("player")
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONEncoder().encode(params)
+        // Loading a stream probes it with ffmpeg first, which can take a while for torrents.
+        request.timeoutInterval = params["source"] == nil ? 15 : 90
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+        let json = (try? JSON.decoder.decode(JSONValue.self, from: data)) ?? .null
+        guard status == 200 else {
+            let message = json["error"]?.stringValue ?? String(data: data, encoding: .utf8) ?? ""
+            throw CastError(message: message.isEmpty ? "The device didn't respond (HTTP \(status))." : message)
+        }
+        return json
+    }
+
     /// The server can convert SRT/VTT subtitles to a format mpv/AVPlayer handle reliably
     /// (and fix encodings); used for addon subtitles.
     func subtitlesURL(for subtitle: URL) -> URL {

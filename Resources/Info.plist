@@ -40,6 +40,13 @@
         <key>NSAllowsLocalNetworking</key>
         <true/>
     </dict>
+    <!-- The streaming server finds Chromecast (mDNS) and DLNA (SSDP) TVs for casting. -->
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Lumen looks for Chromecast and DLNA TVs on your network so you can play videos on them.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_googlecast._tcp</string>
+    </array>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

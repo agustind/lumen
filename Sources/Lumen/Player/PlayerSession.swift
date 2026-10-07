@@ -23,8 +23,13 @@ struct AddonSubtitle: Identifiable, Hashable {
 final class PlayerSession: Identifiable {
     let id = UUID()
     private(set) var request: PlaybackRequest
-    let engine: PlaybackEngine
+    private(set) var engine: PlaybackEngine
     var state: PlaybackState { engine.state }
+    /// The TV playback is cast to, if any.
+    private(set) var castDevice: StreamingServer.CastDevice?
+    /// Why casting ended unexpectedly (shown briefly over the player).
+    private(set) var castMessage: String?
+    private var castMessageTask: Task<Void, Never>?
 
     private(set) var resolvedURL: URL?
     private(set) var resolveError: String?
@@ -81,10 +86,14 @@ final class PlayerSession: Identifiable {
         self.profile = profile
         self.library = library
         self.server = server
-        engine = PlaybackEngineFactory.make(preference: profile.settings.playerEngine,
-                                            hardwareDecoding: profile.settings.hardwareDecoding)
-        engine.setSubtitleScale(Double(profile.settings.subtitlesSize) / 100)
+        engine = Self.makeLocalEngine(settings: profile.settings)
         Task { await start() }
+    }
+
+    private static func makeLocalEngine(settings: AppSettings) -> PlaybackEngine {
+        let engine = PlaybackEngineFactory.make(preference: settings.playerEngine, hardwareDecoding: settings.hardwareDecoding)
+        engine.setSubtitleScale(Double(settings.subtitlesSize) / 100)
+        return engine
     }
 
     // MARK: Lifecycle
@@ -127,6 +136,7 @@ final class PlayerSession: Identifiable {
     }
 
     func close() {
+        castMessageTask?.cancel()
         reportProgress(force: true)
         library.flushProgress()
         progressTask?.cancel()
@@ -200,6 +210,59 @@ final class PlayerSession: Identifiable {
         subtitleSync = .idle
         if state.subtitleDelay != 0 { engine.setSubtitleDelay(0) }
         if state.subtitleSpeed != 1 { engine.setSubtitleSpeed(1) }
+    }
+
+    // MARK: Casting
+
+    /// Moves playback to a TV, continuing from the current position.
+    func startCasting(to device: StreamingServer.CastDevice) {
+        guard castDevice?.id != device.id, resolvedURL != nil else { return }
+        let engine = CastEngine(device: device, server: server)
+        engine.onFailure = { [weak self] message in self?.castingFailed(message) }
+        castDevice = device
+        switchEngine(to: engine)
+    }
+
+    /// Brings playback back to this Mac.
+    func stopCasting() {
+        guard castDevice != nil else { return }
+        castDevice = nil
+        switchEngine(to: Self.makeLocalEngine(settings: profile.settings))
+    }
+
+    private func castingFailed(_ message: String) {
+        Log.error("Casting: \(message)")
+        stopCasting()
+        // Don't start playing out loud on the Mac when the TV stopped.
+        engine.setPaused(true)
+        castMessage = message
+        castMessageTask?.cancel()
+        castMessageTask = Task {
+            try? await Task.sleep(for: .seconds(6))
+            if !Task.isCancelled { castMessage = nil }
+        }
+    }
+
+    private func switchEngine(to newEngine: PlaybackEngine) {
+        guard let url = resolvedURL else { return }
+        let position = state.time
+        let addonSubtitle = addonSubtitles.first { $0.id == selectedAddonSubtitleId }
+        reportProgress(force: true)
+        syncTask?.cancel()
+        subtitleSync = .idle
+        engine.stop()
+        engine = newEngine
+        loadedAddonSubtitles = [:]
+        selectedAddonSubtitleId = nil
+        autoSelectedAudio = false
+        autoSelectedSubtitles = false
+        lastReportedTime = position
+        engine.load(url, startAt: position > 0 ? position : nil)
+        // Keep the subtitles the user picked; embedded tracks go through auto-selection again.
+        if let addonSubtitle {
+            autoSelectedSubtitles = true
+            selectAddonSubtitle(addonSubtitle)
+        }
     }
 
     var canAutoSyncSubtitles: Bool {
