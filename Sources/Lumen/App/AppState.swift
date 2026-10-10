@@ -55,6 +55,8 @@ final class AppState {
     var player: PlayerSession?
     var searchQuery = ""
     var submittedSearch = ""
+    /// Bumped to move keyboard focus to the toolbar search field (⌘F).
+    var searchFocusRequest = 0
     var discoverSelection: DiscoverSelection?
     var pendingAddonInstall: AddonDescriptor?
     var alert: AlertMessage?

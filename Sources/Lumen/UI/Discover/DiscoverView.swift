@@ -106,6 +106,10 @@ struct DiscoverView: View {
         "\(entry.addon.transportUrl)|\(entry.catalog.id)"
     }
 
+    private func catalogTitle(_ entry: (addon: AddonDescriptor, catalog: ManifestCatalog)) -> String {
+        "\(entry.catalog.name ?? entry.catalog.id) · \(entry.addon.manifest.name)"
+    }
+
     private var selected: (addon: AddonDescriptor, catalog: ManifestCatalog)? {
         catalogsForType.first { key($0) == catalogKey } ?? catalogsForType.first
     }
@@ -162,29 +166,30 @@ struct DiscoverView: View {
 
     private var filterBar: some View {
         HStack(spacing: 12) {
-            Picker("Type", selection: $type) {
+            Dropdown(title: "Type", selection: $type, label: Theme.typeTitle(type)) {
                 ForEach(types, id: \.self) { Text(Theme.typeTitle($0)).tag($0) }
             }
             .frame(width: 160)
             .onChange(of: type) { catalogKey = nil; genre = nil }
 
-            Picker("Catalog", selection: Binding(get: { selected.map(key) ?? "" }, set: { catalogKey = $0; genre = nil })) {
+            Dropdown(title: "Catalog",
+                     selection: Binding(get: { selected.map(key) ?? "" }, set: { catalogKey = $0; genre = nil }),
+                     label: selected.map(catalogTitle) ?? "Catalog") {
                 ForEach(catalogsForType, id: \.catalog.id) { entry in
-                    Text("\(entry.catalog.name ?? entry.catalog.id) · \(entry.addon.manifest.name)").tag(key(entry))
+                    Text(catalogTitle(entry)).tag(key(entry))
                 }
             }
             .frame(maxWidth: 320)
 
             if let genreExtra, let options = genreExtra.options, !options.isEmpty {
-                Picker("Genre", selection: $genre) {
-                    if !genreExtra.isRequired { Text("All").tag(String?.none) }
+                Dropdown(title: "Genre", selection: $genre, label: genre ?? "All genres") {
+                    if !genreExtra.isRequired { Text("All genres").tag(String?.none) }
                     ForEach(options, id: \.self) { Text($0).tag(String?.some($0)) }
                 }
                 .frame(width: 200)
             }
             Spacer()
         }
-        .labelsHidden()
         .padding(.horizontal, 28)
     }
 }

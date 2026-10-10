@@ -1018,21 +1018,25 @@ private struct StreamPickerSheet: View {
         return groups.filter { $0.id == provider }
     }
 
+    private func providerTitle(_ id: String?) -> String {
+        guard let id else { return "All providers (\(providersWithStreams.reduce(0) { $0 + $1.streams.count }))" }
+        guard let group = groups.first(where: { $0.id == id }) else { return "All providers" }
+        return "\(group.addon.manifest.name) (\(group.streams.count))"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 Text("Streams").font(.title3.bold())
-                Picker("Provider", selection: Binding(
-                    get: { provider },
-                    set: { provider = $0; userPickedProvider = true }
-                )) {
-                    Text("All providers (\(providersWithStreams.reduce(0) { $0 + $1.streams.count }))").tag(String?.none)
+                Dropdown(title: "Provider",
+                         selection: Binding(get: { provider }, set: { provider = $0; userPickedProvider = true }),
+                         label: providerTitle(provider)) {
+                    Text(providerTitle(nil)).tag(String?.none)
                     if !providersWithStreams.isEmpty { Divider() }
                     ForEach(providersWithStreams) { group in
-                        Text("\(group.addon.manifest.name) (\(group.streams.count))").tag(String?.some(group.id))
+                        Text(providerTitle(group.id)).tag(String?.some(group.id))
                     }
                 }
-                .labelsHidden()
                 .fixedSize()
                 if groups.contains(where: \.isLoading) {
                     ProgressView().controlSize(.small)

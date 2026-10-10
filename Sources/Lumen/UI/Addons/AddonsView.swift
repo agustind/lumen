@@ -110,28 +110,22 @@ struct AddonsView: View {
 
     private var toolbar: some View {
         HStack(spacing: 12) {
-            Picker("Source", selection: $tab) {
-                Text("Installed").tag(Tab.installed)
-                ForEach(remoteCatalogs.filter { $0.catalog.type == "all" }, id: \.catalog.id) { entry in
+            SegmentedControl(title: "Source", selection: $tab, options: [(Tab.installed, "Installed")]
+                + remoteCatalogs.filter { $0.catalog.type == "all" }.map { entry in
                     let name = entry.catalog.name ?? entry.catalog.id
-                    Text(name).tag(Tab.remote(source: entry.addon.transportUrl, catalogId: entry.catalog.id, name: name))
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+                    return (Tab.remote(source: entry.addon.transportUrl, catalogId: entry.catalog.id, name: name), name)
+                })
             .fixedSize()
 
-            Picker("Type", selection: $typeFilter) {
+            Dropdown(title: "Type", selection: $typeFilter, label: typeFilter.map(Theme.typeTitle) ?? "All types") {
                 Text("All types").tag(String?.none)
                 ForEach(availableTypes, id: \.self) { Text(Theme.typeTitle($0)).tag(String?.some($0)) }
             }
-            .labelsHidden()
             .frame(width: 140)
 
             Spacer()
 
-            TextField("Search addons", text: $filter)
-                .textFieldStyle(.roundedBorder)
+            SearchField(prompt: "Search addons", text: $filter)
                 .frame(width: 220)
 
             Button {

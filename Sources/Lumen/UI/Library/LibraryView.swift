@@ -50,13 +50,11 @@ struct LibraryView: View {
                             .buttonStyle(.plain)
                     }
                     Spacer()
-                    TextField("Filter", text: $filterText)
-                        .textFieldStyle(.roundedBorder)
+                    SearchField(prompt: "Filter", text: $filterText)
                         .frame(width: 180)
-                    Picker("Sort", selection: $sort) {
+                    Dropdown(title: "Sort", selection: $sort, label: sort.rawValue) {
                         ForEach(Sort.allCases) { Text($0.rawValue).tag($0) }
                     }
-                    .labelsHidden()
                     .frame(width: 150)
                 }
                 .padding(.horizontal, 28)
@@ -99,18 +97,5 @@ struct LibraryView: View {
         }
         .background(Theme.background)
         .navigationTitle("Library")
-        .toolbar {
-            if app.profile.isLoggedIn {
-                ToolbarItem {
-                    Button {
-                        Task { await app.library.sync() }
-                    } label: {
-                        Label("Sync", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                    .disabled(app.library.isSyncing)
-                    .help("Sync library with your Stremio account")
-                }
-            }
-        }
     }
 }

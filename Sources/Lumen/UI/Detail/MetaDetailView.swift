@@ -309,13 +309,12 @@ private struct EpisodesPanel: View {
         VStack(spacing: 0) {
             if meta.isSeriesLike && meta.seasons.count > 1 {
                 HStack {
-                    Picker("Season", selection: Binding(get: { model.selectedSeason ?? meta.seasons.first ?? 1 },
-                                                        set: { model.selectedSeason = $0 })) {
-                        ForEach(meta.seasons, id: \.self) { season in
-                            Text(season == 0 ? "Specials" : "Season \(season)").tag(season)
-                        }
+                    let season = model.selectedSeason ?? meta.seasons.first ?? 1
+                    Dropdown(title: "Season",
+                             selection: Binding(get: { season }, set: { model.selectedSeason = $0 }),
+                             label: Self.seasonTitle(season)) {
+                        ForEach(meta.seasons, id: \.self) { Text(Self.seasonTitle($0)).tag($0) }
                     }
-                    .labelsHidden()
                     .frame(width: 160)
                     Spacer()
                     Menu {
@@ -364,6 +363,10 @@ private struct EpisodesPanel: View {
                 }
             }
         }
+    }
+
+    private static func seasonTitle(_ season: Int) -> String {
+        season == 0 ? "Specials" : "Season \(season)"
     }
 
     private var seasonVideos: [Video] {

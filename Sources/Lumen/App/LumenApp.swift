@@ -89,6 +89,7 @@ struct LumenCommands: Commands {
         CommandGroup(after: .textEditing) {
             Button("Search") {
                 app.section = .search
+                app.searchFocusRequest += 1
             }
             .keyboardShortcut("f", modifiers: .command)
         }
@@ -158,9 +159,37 @@ struct MainView: View {
             }
             .id(app.section)
         }
-        .searchable(text: $app.searchQuery, placement: .toolbar, prompt: "Search movies, series, channels")
-        .onSubmit(of: .search) { app.search(app.searchQuery) }
+        .toolbar {
+            // The Library's sync button lives here rather than in LibraryView so it stays left of the search field.
+            if app.section == .library && (app.paths[.library] ?? []).isEmpty && app.profile.isLoggedIn {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task { await app.library.sync() }
+                    } label: {
+                        Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .disabled(app.library.isSyncing)
+                    .help("Sync library with your Stremio account")
+                }
+            }
+            if #available(macOS 26, *) {
+                searchItem.sharedBackgroundVisibility(.hidden)
+            } else {
+                searchItem
+            }
+        }
         .background(Theme.background)
+    }
+
+    /// Replaces `.searchable` so the field matches the app's capsule inputs.
+    private var searchItem: some ToolbarContent {
+        @Bindable var app = app
+        return ToolbarItem(placement: .primaryAction) {
+            SearchField(prompt: "Search movies, series, channels", text: $app.searchQuery,
+                        focusRequest: app.searchFocusRequest)
+                .onSubmit { app.search(app.searchQuery) }
+                .frame(width: 300)
+        }
     }
 
     @ViewBuilder
