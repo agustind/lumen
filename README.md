@@ -1,4 +1,13 @@
-# Lumen
+<div align="center">
+<pre>
+██╗     ██╗   ██╗███╗   ███╗███████╗███╗   ██╗
+██║     ██║   ██║████╗ ████║██╔════╝████╗  ██║
+██║     ██║   ██║██╔████╔██║█████╗  ██╔██╗ ██║
+██║     ██║   ██║██║╚██╔╝██║██╔══╝  ██║╚██╗██║
+███████╗╚██████╔╝██║ ╚═╝ ██║███████╗██║ ╚████║
+╚══════╝ ╚═════╝ ╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝
+</pre>
+</div>
 
 A native macOS client for [Stremio](https://github.com/Stremio) addons, written in Swift/SwiftUI.
 Lumen works with your Stremio account, addons and library, but it's an independent project, not an
@@ -8,6 +17,10 @@ The official desktop apps ([stremio-shell](https://github.com/Stremio/stremio-sh
 Mac app) wrap the [stremio-web](https://github.com/Stremio/stremio-web) UI in a web view. This
 project replaces the web UI with real AppKit/SwiftUI screens. It keeps the parts that already work
 well natively: **libmpv** for playback and Stremio's **streaming server** (`server.js`) for torrents.
+
+<p align="center">
+  <img src="screenshot.jpg" alt="Lumen's Discover page showing a grid of popular movies from Cinemeta, with type, catalog and genre dropdowns" width="720">
+</p>
 
 ## Features
 
