@@ -119,7 +119,6 @@ struct DiscoverView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                filterBar
                 if let error = model.error, model.items.isEmpty {
                     EmptyStateView(icon: "exclamationmark.triangle", title: "Couldn't load catalog", message: error)
                 } else if !model.isLoading && model.items.isEmpty {
@@ -129,7 +128,16 @@ struct DiscoverView: View {
                                onSelect: { app.openMeta($0) }, onLoadMore: { await model.loadMore() })
                 }
             }
-            .padding(.vertical, 20)
+            .padding(.top, 8)
+            .padding(.bottom, 20)
+        }
+        // The filters stay pinned above the grid; posters scroll underneath.
+        .safeAreaInset(edge: .top, spacing: 0) {
+            filterBar
+                .padding(.top, 20)
+                .padding(.bottom, 12)
+                .background(.ultraThinMaterial)
+                .background(Theme.background.opacity(0.6))
         }
         .background(Theme.background)
         .navigationTitle("Discover")
