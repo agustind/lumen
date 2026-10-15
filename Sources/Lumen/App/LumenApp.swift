@@ -148,7 +148,7 @@ struct MainView: View {
         @Bindable var app = app
         NavigationSplitView {
             Sidebar()
-                .navigationSplitViewColumnWidth(min: 190, ideal: 210, max: 260)
+                .navigationSplitViewColumnWidth(min: 190, ideal: 208, max: 260)
         } detail: {
             NavigationStack(path: app.path(for: app.section)) {
                 sectionRoot(app.section)
@@ -228,42 +228,46 @@ private struct Sidebar: View {
         }
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
-            VStack(alignment: .leading, spacing: 10) {
+            // Insets and the 27pt leading column follow Apple Music's account row.
+            VStack(alignment: .leading, spacing: 16) {
                 IncognitoSwitch()
                 ServerStatusBadge()
                 AccountBadge()
             }
-            .padding(12)
+            .padding(.leading, 18)
+            .padding(.trailing, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 15)
         }
     }
 }
 
+/// A plain `Label`, so the sidebar list style sets the font (13pt) and icon size. Apple Music's rows are
+/// also indented one outline level and are 32pt apart instead of 28.5pt; the padding adds both.
 private struct SidebarRow: View {
     var section: SidebarSection
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: section.icon)
-                .font(.system(size: 15))
-                .frame(width: 20)
-            Text(section.title)
-                .font(.system(size: 14, weight: .medium))
-        }
-        .padding(.vertical, 4)
+        Label(section.title, systemImage: section.icon)
+            .padding(.leading, 13)
+            .padding(.vertical, 1.75)
     }
 }
+
+/// Width of the leading icon column in the sidebar's bottom area (Apple Music's account avatar size).
+private let sidebarFooterIconWidth: CGFloat = 27
 
 private struct IncognitoSwitch: View {
     @Environment(AppState.self) private var app
 
     var body: some View {
         @Bindable var profile = app.profile
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             Image(systemName: profile.settings.incognito ? "eye.slash.fill" : "eye.slash")
-                .font(.system(size: 10))
-                .frame(width: 12)
+                .font(.system(size: 13))
+                .frame(width: sidebarFooterIconWidth)
             Text("Incognito")
-                .font(.system(size: 11, weight: profile.settings.incognito ? .semibold : .regular))
+                .font(.system(size: 12, weight: profile.settings.incognito ? .semibold : .regular))
             Spacer(minLength: 4)
             Toggle("Incognito", isOn: $profile.settings.incognito)
                 .toggleStyle(.switch)
@@ -280,12 +284,13 @@ private struct ServerStatusBadge: View {
     @Environment(AppState.self) private var app
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 7) {
             Circle()
                 .fill(color)
-                .frame(width: 7, height: 7)
+                .frame(width: 8, height: 8)
+                .frame(width: sidebarFooterIconWidth)
             Text(label)
-                .font(.system(size: 11))
+                .font(.system(size: 12))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
@@ -317,17 +322,18 @@ private struct AccountBadge: View {
 
     var body: some View {
         if let auth = app.profile.auth {
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
                 Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 22))
+                    .font(.system(size: 27))
                     .foregroundStyle(Theme.accent)
-                VStack(alignment: .leading, spacing: 0) {
+                    .frame(width: sidebarFooterIconWidth)
+                VStack(alignment: .leading, spacing: 1) {
                     Text(auth.user.email)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
                         .truncationMode(.middle)
                     Text(app.library.isSyncing ? "Syncing…" : "Synced")
-                        .font(.system(size: 10))
+                        .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                 }
             }
