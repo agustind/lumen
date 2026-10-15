@@ -192,6 +192,8 @@ struct MainView: View {
             SearchField(prompt: "Search movies, series, channels", text: $app.searchQuery,
                         focusRequest: app.searchFocusRequest)
                 .onSubmit { app.search(app.searchQuery) }
+                // Clearing the field (✕, Esc or deleting the text) clears the results too.
+                .onChange(of: app.searchQuery) { if app.searchQuery.isEmpty { app.submittedSearch = "" } }
                 .frame(width: 300)
         }
     }
@@ -227,7 +229,7 @@ private struct Sidebar: View {
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
             VStack(alignment: .leading, spacing: 10) {
-                if app.profile.settings.incognito { IncognitoBadge() }
+                IncognitoSwitch()
                 ServerStatusBadge()
                 AccountBadge()
             }
@@ -251,22 +253,26 @@ private struct SidebarRow: View {
     }
 }
 
-private struct IncognitoBadge: View {
+private struct IncognitoSwitch: View {
     @Environment(AppState.self) private var app
 
     var body: some View {
+        @Bindable var profile = app.profile
         HStack(spacing: 6) {
-            Image(systemName: "eye.slash.fill")
+            Image(systemName: profile.settings.incognito ? "eye.slash.fill" : "eye.slash")
                 .font(.system(size: 10))
+                .frame(width: 12)
             Text("Incognito")
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 11, weight: profile.settings.incognito ? .semibold : .regular))
+            Spacer(minLength: 4)
+            Toggle("Incognito", isOn: $profile.settings.incognito)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .labelsHidden()
         }
-        .foregroundStyle(Theme.foreground)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 4)
-        .background(Color.white.opacity(0.1), in: Capsule())
-        .help("Searches and playback aren't being saved. Click to turn incognito mode off (⇧⌘N).")
-        .onTapGesture { app.profile.settings.incognito = false }
+        .foregroundStyle(profile.settings.incognito ? Theme.foreground : .secondary)
+        .help("Don't keep searches or what you play: titles stay out of Continue Watching and aren't synced, "
+            + "and search results and posters aren't cached on disk (⇧⌘N).")
     }
 }
 
