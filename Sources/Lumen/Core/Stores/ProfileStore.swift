@@ -21,6 +21,7 @@ final class ProfileStore {
     var settings: AppSettings {
         didSet {
             Incognito.isOn = settings.incognito
+            RealDebrid.configure(settings)
             if settings != oldValue { persist() }
         }
     }
@@ -43,6 +44,7 @@ final class ProfileStore {
             settings = AppSettings()
         }
         Incognito.isOn = settings.incognito
+        RealDebrid.configure(settings)
     }
 
     nonisolated static let officialAddons: [AddonDescriptor] = {
@@ -56,9 +58,11 @@ final class ProfileStore {
         Storage.save(Persisted(auth: auth, addons: addons, settings: settings), to: Self.fileName)
     }
 
-    /// Addons usable by the app (supported protocol; adult ones hidden unless enabled).
+    /// Addons usable by the app (supported protocol; adult ones hidden unless enabled), plus the
+    /// built-in Real-Debrid addon when it's set up. That one is never part of `addons`, so it doesn't sync.
     var activeAddons: [AddonDescriptor] {
         addons.filter { !$0.isLegacy && (settings.showAdultAddons || !$0.manifest.behaviorHints.adult) }
+            + [RealDebrid.addon(for: settings)].compactMap { $0 }
     }
 
     func addons(supporting resource: String, type: String, id: String?) -> [AddonDescriptor] {

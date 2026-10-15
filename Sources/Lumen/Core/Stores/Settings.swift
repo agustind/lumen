@@ -30,11 +30,15 @@ struct AppSettings: Codable, Hashable {
     var streamingServerURL = "http://127.0.0.1:11470"
     var startStreamingServer = true
     var showAdultAddons = false
-    /// Stream addon pre-selected in a title's stream list: `auto` (Torrentio RD),
-    /// empty for none, or an addon transport URL.
+    /// Stream addon pre-selected in a title's stream list: `auto` (Real-Debrid, or an installed
+    /// Torrentio RD), empty for none, or an addon transport URL.
     var preferredStreamAddon = AppSettings.automaticStreamAddon
     /// Don't record searches or playback. See `Incognito`.
     var incognito = false
+    /// Real-Debrid API token for the built-in Real-Debrid streams (see `RealDebrid`). Empty when off.
+    var realDebridToken = ""
+    /// `RealDebrid.Source` raw values the built-in addon queries.
+    var realDebridSources = RealDebrid.Source.allCases.map(\.rawValue)
 
     static let automaticStreamAddon = "auto"
 
@@ -57,18 +61,20 @@ struct AppSettings: Codable, Hashable {
         showAdultAddons = c.lossy(Bool.self, .showAdultAddons) ?? defaults.showAdultAddons
         preferredStreamAddon = c.lossy(String.self, .preferredStreamAddon) ?? defaults.preferredStreamAddon
         incognito = c.lossy(Bool.self, .incognito) ?? defaults.incognito
+        realDebridToken = c.lossy(String.self, .realDebridToken) ?? defaults.realDebridToken
+        realDebridSources = c.lossy([String].self, .realDebridSources) ?? defaults.realDebridSources
     }
 }
 
 enum StreamAddonPreference {
     /// Picks the addon whose streams should be pre-selected.
-    /// `auto` picks Torrentio configured with Real-Debrid.
+    /// `auto` picks the built-in Real-Debrid addon, else an installed Torrentio configured with Real-Debrid.
     static func preferred(among addons: [AddonDescriptor], setting: String) -> AddonDescriptor? {
         if setting.isEmpty { return nil }
         if setting != AppSettings.automaticStreamAddon {
             return addons.first { $0.transportUrl == setting }
         }
-        return addons.first { isTorrentio($0) && isRealDebrid($0) }
+        return addons.first(where: RealDebrid.isBuiltIn) ?? addons.first { isTorrentio($0) && isRealDebrid($0) }
     }
 
     static func isTorrentio(_ addon: AddonDescriptor) -> Bool {

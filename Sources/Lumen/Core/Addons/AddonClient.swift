@@ -70,7 +70,8 @@ actor AddonClient {
     }
 
     func streams(addon: AddonDescriptor, type: String, id: String) async throws -> [Stream] {
-        try await get(StreamsResponse.self, addon: addon, resource: "stream", contentType: type, id: id, useCache: false).streams
+        if RealDebrid.isBuiltIn(addon) { return try await realDebridStreams(type: type, id: id) }
+        return try await get(StreamsResponse.self, addon: addon, resource: "stream", contentType: type, id: id, useCache: false).streams
     }
 
     func subtitles(addon: AddonDescriptor, type: String, id: String, extra: [(String, String)]) async throws -> [Subtitle] {
@@ -98,7 +99,7 @@ actor AddonClient {
         cache.removeAll()
     }
 
-    private func fetch(_ url: URL, useCache: Bool) async throws -> Data {
+    func fetch(_ url: URL, useCache: Bool) async throws -> Data {
         if useCache, let entry = cache[url], Date().timeIntervalSince(entry.date) < cacheTTL {
             return entry.data
         }

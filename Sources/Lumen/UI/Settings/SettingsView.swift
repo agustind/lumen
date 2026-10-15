@@ -52,12 +52,14 @@ struct SettingsView: View {
                 }
             }
 
+            RealDebridSection()
+
             Section("Streams") {
                 Picker("Pre-selected stream addon", selection: $profile.settings.preferredStreamAddon) {
-                    Text("Torrentio RD").tag(AppSettings.automaticStreamAddon)
+                    Text("Real-Debrid").tag(AppSettings.automaticStreamAddon)
                     Text("None (show all)").tag("")
                     ForEach(app.profile.activeAddons.filter {
-                        $0.manifest.resourceNames.contains("stream")
+                        $0.manifest.resourceNames.contains("stream") && !RealDebrid.isBuiltIn($0)
                             && !(StreamAddonPreference.isTorrentio($0) && StreamAddonPreference.isRealDebrid($0))
                     }) { addon in
                         Text(addon.manifest.name).tag(addon.transportUrl)
@@ -180,6 +182,109 @@ struct SettingsView: View {
             Text("Not running").foregroundStyle(.secondary)
         case .failed(let message):
             Text(message).foregroundStyle(Theme.danger).multilineTextAlignment(.trailing)
+        }
+    }
+}
+
+/// Token entry and source switches for the built-in Real-Debrid streams (see `RealDebrid`).
+private struct RealDebridSection: View {
+    @Environment(AppState.self) private var app
+    @State private var draftToken = ""
+    @State private var account: RealDebrid.Account?
+    @State private var error: String?
+    @State private var isChecking = false
+
+    var body: some View {
+        @Bindable var profile = app.profile
+        Section {
+            if profile.settings.realDebridToken.isEmpty {
+                HStack {
+                    SecureField("API token", text: $draftToken, prompt: Text("Paste your API token"))
+                        .onSubmit(connect)
+                    Button("Connect", action: connect)
+                        .disabled(draftToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isChecking)
+                    if isChecking { ProgressView().controlSize(.small) }
+                }
+                if let error {
+                    Text(error).foregroundStyle(Theme.danger)
+                }
+                Text("Stream cached torrents through your Real-Debrid account, with no addons to install. [Get your API token](https://real-debrid.com/apitoken)")
+                    .foregroundStyle(.secondary)
+            } else {
+                LabeledContent("Account") {
+                    accountStatus
+                }
+                ForEach(RealDebrid.Source.allCases) { source in
+                    Toggle(isOn: Binding(
+                        get: { profile.settings.realDebridSources.contains(source.rawValue) },
+                        set: { isOn in
+                            profile.settings.realDebridSources.removeAll { $0 == source.rawValue }
+                            if isOn { profile.settings.realDebridSources.append(source.rawValue) }
+                        }
+                    )) {
+                        Text("Search \(source.title)")
+                        Text(source.detail)
+                    }
+                }
+                HStack {
+                    Text("Results from all sources are merged, cached first.")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Disconnect", role: .destructive) {
+                        profile.settings.realDebridToken = ""
+                        account = nil
+                        error = nil
+                    }
+                }
+            }
+        } header: {
+            Text("Real-Debrid")
+        }
+        .task(id: profile.settings.realDebridToken) { await refreshAccount() }
+    }
+
+    @ViewBuilder
+    private var accountStatus: some View {
+        if let account {
+            if account.isPremium {
+                Text("\(account.username) · Premium\(account.expiration.map { " until \($0.formatted(date: .abbreviated, time: .omitted))" } ?? "")")
+                    .foregroundStyle(Theme.green)
+            } else {
+                Text("\(account.username) · No premium (streams won't play)")
+                    .foregroundStyle(Theme.yellow)
+            }
+        } else if let error {
+            Text(error).foregroundStyle(Theme.danger)
+        } else {
+            ProgressView().controlSize(.small)
+        }
+    }
+
+    private func connect() {
+        let token = draftToken.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !token.isEmpty else { return }
+        isChecking = true
+        error = nil
+        Task {
+            defer { isChecking = false }
+            do {
+                account = try await RealDebrid.account(token: token)
+                draftToken = ""
+                app.profile.settings.realDebridToken = token
+            } catch {
+                self.error = error.localizedDescription
+            }
+        }
+    }
+
+    private func refreshAccount() async {
+        let token = app.profile.settings.realDebridToken
+        guard !token.isEmpty, account == nil else { return }
+        do {
+            account = try await RealDebrid.account(token: token)
+            error = nil
+        } catch {
+            self.error = error.localizedDescription
         }
     }
 }
