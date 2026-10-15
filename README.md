@@ -128,8 +128,8 @@ automated UI checks. See `Sources/Lumen/App/DebugHooks.swift`.
 
 ## Not implemented yet
 
-Calendar and notifications, Trakt, Chromecast, `.torrent` files, archive streams (rar/zip),
-casting, and the intro/outro skip API.
+Calendar and notifications, Trakt, `.torrent` files, archive streams (rar/zip), and the intro/outro
+skip API.
 
 ## Licensing
 
