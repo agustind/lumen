@@ -38,6 +38,11 @@ well natively: **libmpv** for playback and Stremio's **streaming server** (`serv
   - Torrent stats (peers, speed) while buffering
   - Now Playing / media keys, sleep prevention, immersive full-screen window chrome
   - Play on a TV: Chromecast and DLNA TVs on the network, through the streaming server's casting API
+- **Real-Debrid**: paste an API token in Settings and Lumen searches Torrentio and Comet with it, no addons to
+  install. Results from both are merged into one list, cached releases first, each torrent once. The token
+  stays on your Mac and isn't added to your synced addon collection.
+- **Incognito mode**: a switch at the bottom of the sidebar (or ⇧⌘N). Playback stays out of the library and
+  sync, and network caches stay off disk.
 - **Addons**: installed, Official and Community lists, install by URL or `stremio://`/`lumen://` link, configure, uninstall
 - **Account**: log in or sign up; addon collection and library sync through `api.strem.io`
   (same datastore as the official apps, including the watched-episodes bitfield)
