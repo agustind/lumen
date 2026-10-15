@@ -33,6 +33,8 @@ struct AppSettings: Codable, Hashable {
     /// Stream addon pre-selected in a title's stream list: `auto` (Torrentio RD),
     /// empty for none, or an addon transport URL.
     var preferredStreamAddon = AppSettings.automaticStreamAddon
+    /// Don't record searches or playback. See `Incognito`.
+    var incognito = false
 
     static let automaticStreamAddon = "auto"
 
@@ -54,6 +56,7 @@ struct AppSettings: Codable, Hashable {
         startStreamingServer = c.lossy(Bool.self, .startStreamingServer) ?? defaults.startStreamingServer
         showAdultAddons = c.lossy(Bool.self, .showAdultAddons) ?? defaults.showAdultAddons
         preferredStreamAddon = c.lossy(String.self, .preferredStreamAddon) ?? defaults.preferredStreamAddon
+        incognito = c.lossy(Bool.self, .incognito) ?? defaults.incognito
     }
 }
 

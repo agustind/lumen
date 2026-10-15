@@ -117,6 +117,13 @@ struct SettingsView: View {
                 }
             }
 
+            Section("Privacy") {
+                Toggle(isOn: $profile.settings.incognito) {
+                    Text("Incognito mode")
+                    Text("Lumen doesn't keep your searches or what you play. Titles you watch stay out of Continue Watching and aren't synced to your account, and search results and posters aren't cached on disk.")
+                }
+            }
+
             Section("Content") {
                 Toggle("Show adult addons", isOn: $profile.settings.showAdultAddons)
             }

@@ -85,6 +85,10 @@ struct LumenCommands: Commands {
                 }
             }
             .keyboardShortcut("[", modifiers: .command)
+            Divider()
+            Toggle("Incognito Mode", isOn: Binding(get: { app.profile.settings.incognito },
+                                                   set: { app.profile.settings.incognito = $0 }))
+                .keyboardShortcut("n", modifiers: [.command, .shift])
         }
         CommandGroup(after: .textEditing) {
             Button("Search") {
@@ -223,6 +227,7 @@ private struct Sidebar: View {
         .listStyle(.sidebar)
         .safeAreaInset(edge: .bottom) {
             VStack(alignment: .leading, spacing: 10) {
+                if app.profile.settings.incognito { IncognitoBadge() }
                 ServerStatusBadge()
                 AccountBadge()
             }
@@ -243,6 +248,25 @@ private struct SidebarRow: View {
                 .font(.system(size: 14, weight: .medium))
         }
         .padding(.vertical, 4)
+    }
+}
+
+private struct IncognitoBadge: View {
+    @Environment(AppState.self) private var app
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "eye.slash.fill")
+                .font(.system(size: 10))
+            Text("Incognito")
+                .font(.system(size: 11, weight: .medium))
+        }
+        .foregroundStyle(Theme.foreground)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(Color.white.opacity(0.1), in: Capsule())
+        .help("Searches and playback aren't being saved. Click to turn incognito mode off (⇧⌘N).")
+        .onTapGesture { app.profile.settings.incognito = false }
     }
 }
 

@@ -156,8 +156,12 @@ final class LibraryStore {
 
     // MARK: Playback progress (port of stremio-core's Player TimeChanged handling)
 
+    // Incognito playback leaves the library untouched: nothing new in "Continue watching", no progress
+    // or watched state, no last stream, nothing pushed to the account.
+
     /// Ensures an item exists before playback; new items are temporary until watched or added.
     func beginPlayback(meta: MetaItem, videoId: String, stream: Stream, addonTransportUrl: String?) {
+        guard !Incognito.isOn else { return }
         var item = items[meta.id] ?? LibraryItem(meta: meta)
         if item.removed { item.temp = true }
         item.name = meta.name
@@ -178,7 +182,7 @@ final class LibraryStore {
     /// Returns true when this update crossed the "watched" threshold.
     @discardableResult
     func updateProgress(metaId: String, videos: [Video], videoId: String, time: Int64, duration: Int64, seeked: Bool) -> Bool {
-        guard var item = items[metaId] else { return false }
+        guard !Incognito.isOn, var item = items[metaId] else { return false }
         item.state.lastWatched = Date()
         if item.state.videoId != videoId {
             item.state.videoId = videoId
@@ -223,7 +227,7 @@ final class LibraryStore {
 
     /// Called when playback ends naturally or the next episode starts.
     func finishVideo(metaId: String) {
-        guard var item = items[metaId] else { return }
+        guard !Incognito.isOn, var item = items[metaId] else { return }
         item.state.timeOffset = 0
         commit(item)
     }

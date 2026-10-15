@@ -19,7 +19,10 @@ final class ProfileStore {
     private(set) var auth: Auth?
     private(set) var addons: [AddonDescriptor]
     var settings: AppSettings {
-        didSet { if settings != oldValue { persist() } }
+        didSet {
+            Incognito.isOn = settings.incognito
+            if settings != oldValue { persist() }
+        }
     }
     private(set) var isSyncing = false
     var lastError: String?
@@ -39,6 +42,7 @@ final class ProfileStore {
             addons = Self.officialAddons
             settings = AppSettings()
         }
+        Incognito.isOn = settings.incognito
     }
 
     nonisolated static let officialAddons: [AddonDescriptor] = {

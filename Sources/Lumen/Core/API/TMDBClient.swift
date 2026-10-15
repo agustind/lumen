@@ -43,6 +43,8 @@ actor TMDBClient {
 
     private let baseURL = URL(string: "https://api.themoviedb.org/3/")!
     private let session: URLSession
+    /// Used in incognito mode: no disk cache or cookies.
+    private let ephemeralSession: URLSession
     /// TMDB → IMDb ids ("movie/603" → "tt0133093"); they never change.
     private var imdbIds: [String: String] = [:]
     private var cache: [String: [MetaItem]] = [:]
@@ -51,6 +53,9 @@ actor TMDBClient {
         let configuration = URLSessionConfiguration.default
         configuration.timeoutIntervalForRequest = 15
         session = URLSession(configuration: configuration)
+        let ephemeral = URLSessionConfiguration.ephemeral
+        ephemeral.timeoutIntervalForRequest = 15
+        ephemeralSession = URLSession(configuration: ephemeral)
     }
 
     /// Recommendations for a Cinemeta movie or series, as items with IMDb ids so they open like any other title.
@@ -120,7 +125,7 @@ actor TMDBClient {
         var request = URLRequest(url: url)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if !isV3Key { request.setValue("Bearer \(credential)", forHTTPHeaderField: "Authorization") }
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await (Incognito.isOn ? ephemeralSession : session).data(for: request)
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             throw AddonError.badStatus(http.statusCode)
         }

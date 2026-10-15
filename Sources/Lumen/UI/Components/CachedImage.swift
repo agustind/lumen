@@ -10,6 +10,8 @@ actor ImageLoader {
     private nonisolated(unsafe) let memory = NSCache<NSURL, NSImage>()
     private var inFlight: [URL: Task<NSImage?, Never>] = [:]
     private let session: URLSession
+    /// Used in incognito mode, so posters of what you search and watch don't land in the disk cache.
+    private let ephemeralSession: URLSession
 
     init() {
         memory.countLimit = 600
@@ -19,6 +21,9 @@ actor ImageLoader {
         configuration.requestCachePolicy = .returnCacheDataElseLoad
         configuration.httpMaximumConnectionsPerHost = 8
         session = URLSession(configuration: configuration)
+        let ephemeral = URLSessionConfiguration.ephemeral
+        ephemeral.httpMaximumConnectionsPerHost = 8
+        ephemeralSession = URLSession(configuration: ephemeral)
     }
 
     nonisolated func cached(_ url: URL) -> NSImage? {
@@ -28,7 +33,7 @@ actor ImageLoader {
     func image(for url: URL) async -> NSImage? {
         if let image = memory.object(forKey: url as NSURL) { return image }
         if let task = inFlight[url] { return await task.value }
-        let session = self.session
+        let session = Incognito.isOn ? ephemeralSession : self.session
         let task = Task<NSImage?, Never> {
             guard let (data, response) = try? await session.data(from: url),
                   (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,

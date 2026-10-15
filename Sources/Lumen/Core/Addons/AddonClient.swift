@@ -19,15 +19,20 @@ actor AddonClient {
     static let shared = AddonClient()
 
     private let session: URLSession
+    /// Used in incognito mode: no disk cache or cookies.
+    private let ephemeralSession: URLSession
     private var cache: [URL: (date: Date, data: Data)] = [:]
     private var inFlight: [URL: Task<Data, Error>] = [:]
     private let cacheTTL: TimeInterval = 10 * 60
 
     init() {
-        let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 20
-        configuration.httpAdditionalHeaders = ["User-Agent": "Lumen-macOS/1.0"]
-        session = URLSession(configuration: configuration)
+        func configure(_ configuration: URLSessionConfiguration) -> URLSessionConfiguration {
+            configuration.timeoutIntervalForRequest = 20
+            configuration.httpAdditionalHeaders = ["User-Agent": "Lumen-macOS/1.0"]
+            return configuration
+        }
+        session = URLSession(configuration: configure(.default))
+        ephemeralSession = URLSession(configuration: configure(.ephemeral))
     }
 
     /// Percent-encodes like JavaScript's `encodeURIComponent`, which addons expect.
@@ -98,7 +103,7 @@ actor AddonClient {
             return entry.data
         }
         if let task = inFlight[url] { return try await task.value }
-        let session = self.session
+        let session = Incognito.isOn ? ephemeralSession : self.session
         let task = Task<Data, Error> {
             let (data, response) = try await session.data(from: url)
             if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
